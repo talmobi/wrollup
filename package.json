@@ -19,5 +19,11 @@
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/talmobi/wrollup/issues"
+  },
+  "devDependencies": {
+    "rollup": "^0.34.10"
+  },
+  "dependencies": {
+    "chokidar": "^1.6.0"
   }
 }
