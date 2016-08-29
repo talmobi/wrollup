@@ -1,0 +1,23 @@
+{
+  "name": "wrollup",
+  "version": "0.0.0",
+  "description": "watcher for rollup",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/talmobi/wrollup"
+  },
+  "keywords": [
+    "watch",
+    "watcher",
+    "rollup"
+  ],
+  "author": "talmobi <talmo.christian@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/talmobi/wrollup/issues"
+  }
+}
