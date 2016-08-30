@@ -10,21 +10,44 @@ var watchers = {}
 
 var configPath = path.resolve(process.argv[2] || 'rollup.config.js')
 
-// first read in the config file
+// using rollup itself to read and parse the rollup config
+// (else nodejs fails on 'export' es6 syntax by default)
 rollup.rollup({ entry: configPath }).then(function (bundle) {
   var result = bundle.generate({ format: 'cjs' })
   var src = result.code
   var Module = module.constructor
   var m = new Module()
-  m._compile(src, 'rollup.config.js.tmp')
+  m._compile(src, 'rollup.config.js.tmp') // filename mandatory but unused
   options = m.exports
   console.log('__rollup config loaded__')
   console.log(options)
 
+  if (!options || !options.entry) {
+    console.log('')
+    console.log('')
+    var msgs = [
+      'no rollup.config.js found -- please specify location when running',
+      '```wrollup pathToRollupConfig```',
+    ]
+    msgs.forEach(function (msg) { console.log(msg) })
+    console.log('')
+    console.log('')
+
+    throw new Error('please create a rollup.config.js file')
+  }
+
+  // fire the lazers with our rollup config options
   init(options)
 }, function (err) {
   console.error(err)
-  console.error('no rollup config file found [' + configPath + ']')
+  console.error('')
+  var msgs = [
+    chalk.red('no rollup.config.js found -- please specify location when running'),
+    '',
+    '```wrollup path/to/rollup.config.js```',
+  ]
+  msgs.forEach(function (msg) { console.error(msg) })
+  console.error('')
 })
 
 function init (options) {
