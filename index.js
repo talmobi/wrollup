@@ -3,57 +3,154 @@ var chokidar = require('chokidar')
 var chalk = require('chalk')
 var fs = require('fs')
 
+var realpathSync = fs.realpathSync
+
+// var relative = require('require-relative')
+// var nodeResolve = require('rollup-plugin-node-resolve')
+// var commonjs = require('rollup-plugin-commonjs')
+
+var requireFromString = require('require-from-string')
+
 var path = require('path')
+
+// var _eval = require('eval')
 
 var cache
 var watchers = {}
 
+// chalk colours
+var colors = ['green', 'yellow', 'blue', 'cyan', 'magenta', 'white']
+
 var configPath = path.resolve(process.argv[2] || 'rollup.config.js')
+
+// return console.log('configPath: ' + configPath)
+
+process.chdir(configPath.substring(0, configPath.lastIndexOf('/')))
+
+rollup.rollup({
+  entry: configPath
+  // plugins: [ nodeResolve(), commonjs() ]
+}).then(function (bundle) {
+  var result = bundle.generate({ format: 'cjs' })
+  var opts = requireFromString(result.code)
+  console.log(opts)
+  init(opts)
+}).then(function () {
+  console.log('done')
+}, function (err) {
+  console.log(err)
+})
+
+
+return
+var contents = fs.readFileSync(configPath, 'utf8')
+
+
+
+// var Module = module.constructor
+// var m = new Module()
+// try {
+//   m._compile(content, 'rollup.config.js.tmp') // filename mandatory but unused
+//   // options = require('rollup.config.js.tmp')
+// } catch (err) {
+//   console.log(err)
+// }
+
+// var res = _eval(content)
+// console.log(res)
+
+// configPath = relative.resolve(configPath, process.cwd())
+// configPath = fs.realpathSync( configPath )
+// console.log(configPath)
 
 // using rollup itself to read and parse the rollup config
 // (else nodejs fails on 'export' es6 syntax by default)
-rollup.rollup({ entry: configPath }).then(function (bundle) {
-  var result = bundle.generate({ format: 'cjs' })
-  var src = result.code
-  var Module = module.constructor
-  var m = new Module()
-  m._compile(src, 'rollup.config.js.tmp') // filename mandatory but unused
-  options = m.exports
-  console.log('__rollup config loaded__')
-  console.log(options)
-
-  if (!options || !options.entry) {
-    console.log('')
-    console.log('')
-    var msgs = [
-      'no rollup.config.js found -- please specify location when running',
-      '```wrollup pathToRollupConfig```',
-    ]
-    msgs.forEach(function (msg) { console.log(msg) })
-    console.log('')
-    console.log('')
-
-    throw new Error('please create a rollup.config.js file')
-  }
-
-  // fire the lazers with our rollup config options
-  init(options)
-}, function (err) {
-  console.error(err)
-  console.error('')
-  var msgs = [
-    chalk.red('no rollup.config.js found -- please specify location when running'),
-    '',
-    '```wrollup path/to/rollup.config.js```',
-  ]
-  msgs.forEach(function (msg) { console.error(msg) })
-  console.error('')
-})
+// rollup.rollup({
+//   entry: configPath,
+//   // plugins: [
+//   //   nodeResolve({
+//   //     jsnext: true,
+//   //     main: true
+//   //   }),
+//   //   commonjs({
+//   //     exclude: 'node_modules/**',
+//   //     ignoreGlobal: true
+//   //   })
+//   // ]
+// }).then(function (bundle) {
+// 
+//   console.log('x')
+//   var result = bundle.generate({ format: 'cjs' })
+// 
+//   console.log('x')
+//   var src = result.code
+// 
+//   console.log('x')
+//   var Module = module.constructor
+// 
+//   console.log('x')
+//   var m = new Module()
+// 
+//   console.log('x')
+//   console.log(src)
+//   console.log( process.cwd() )
+//   try {
+//     m._compile(src, 'rollup.config.js.tmp') // filename mandatory but unused
+//   } catch (err) {
+//     console.log(err)
+//   }
+// 
+//   console.log('xxx')
+//   // options = _eval(result.code)
+//   //options = m.exports
+//   console.log(m.exports)
+// 
+//   console.log('x')
+//   options = m.exports
+//   console.log('__rollup config loaded__')
+// 
+//   console.log('x')
+//   console.log(options)
+// 
+//   console.log('x')
+// 
+//   if (!options || !options.entry) {
+//     console.log('')
+//     console.log('')
+//     var msgs = [
+//       'no rollup.config.js found -- please specify location when running',
+//       '```wrollup pathToRollupConfig```',
+//     ]
+//     msgs.forEach(function (msg) { console.log(msg) })
+//     console.log('')
+//     console.log('')
+// 
+//     throw new Error('please create a rollup.config.js file')
+//   }
+// 
+//   console.log(options)
+//   // fire the lazers with our rollup config options
+//   setTimeout(function () {
+//     init(options)
+//   }, 2000)
+// }, function (err) {
+//   console.error(err)
+//   console.error('')
+//   var msgs = [
+//     chalk.red('no rollup.config.js found -- please specify location when running'),
+//     '',
+//     '```wrollup path/to/rollup.config.js```',
+//   ]
+//   msgs.forEach(function (msg) { console.error(msg) })
+//   console.error('')
+// })
 
 function init (options) {
   console.log('init called')
   console.log(options)
 
+  // used to listen for change on all source files when an error occurs
+  // in order to re-initliaize source watching/bundling
   var globalWatcher = null
 
   function log (text) {
@@ -167,6 +264,7 @@ function init (options) {
     var buildStart = Date.now()
 
     rollup.rollup(opts).then(function (bundle) {
+    console.log('bla')
       cache = bundle
 
       // close globalWatcher if it was on
@@ -183,19 +281,14 @@ function init (options) {
         // skip plugin helper modules
         if (/\0/.test(id)) {
           console.log(chalk.yellow('skipping helper module'))
-          return
+          continue
         }
 
         if (!watchers[id]) {
-          // function trigger (evt, path) {
-          //   console.log(evt, path)
-          //   triggerRebuild()
-          // }
-
           var watcher = chokidar.watch(id)
           watcher.on('change', trigger)
           watchers[id] = watcher
-          // log('watcher added')
+          console.log('watcher added')
         }
       }
 
@@ -203,8 +296,20 @@ function init (options) {
     }).then(function () {
       var delta = Date.now() - buildStart
       console.log('bundling took: ' + chalk.cyan(delta) + ' milliseconds')
-      console.log(chalk.green('Success.'))
+
+      process.stdout.write(chalk['green']('Success.'))
+
+      // create dots after success message to more easily
+      // distinguish between old and new rebuilds
+      for (var i = 0; i < 22; i++) {
+        setTimeout(function () {
+          process.stdout.write(chalk['green']('.'))
+        }, i * 15)
+      }
+
     }, function (err) {
+      console.log('error')
+      console.log(err)
       var honey = honeydripError(err)
       var error = []
       error.push('')
