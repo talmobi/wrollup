@@ -27,8 +27,14 @@ var configPath = path.resolve(process.argv[2] || 'rollup.config.js')
 
 process.chdir(configPath.substring(0, configPath.lastIndexOf('/')))
 
+const stderr = console.error.bind( console )
+
 rollup.rollup({
-  entry: configPath
+  entry: configPath,
+  onwarn: function (message) {
+    if ( /Treating .+ as external dependency/.test( message ) ) return
+    stderr( message )
+  }
   // plugins: [ nodeResolve(), commonjs() ]
 }).then(function (bundle) {
   var result = bundle.generate({ format: 'cjs' })
@@ -36,7 +42,7 @@ rollup.rollup({
   console.log(opts)
   init(opts)
 }).then(function () {
-  console.log('done')
+  console.log('initliaized')
 }, function (err) {
   console.log(err)
 })
@@ -154,7 +160,7 @@ function init (options) {
   var globalWatcher = null
 
   function log (text) {
-    console.log(chalk.gray(text))
+    // console.log(chalk.gray(text))
   }
 
   // source: https://github.com/facebookincubator/create-react-app/b/m/s/start.js#L69-L73
@@ -218,7 +224,7 @@ function init (options) {
   function triggerRebuild () {
     clearTimeout(_timeout)
     _timeout = setTimeout(function () {
-      console.log(chalk.gray('triggering...'))
+      log(chalk.gray('triggering...'))
     }, 20)
     clearTimeout(buildTimeout)
     buildTimeout = setTimeout(function () {
@@ -251,8 +257,8 @@ function init (options) {
   }
 
   function build () {
-    clearConsole()
-    console.log(chalk.gray('bundling... [' + chalk.blue((new Date().toLocaleString())) + ']'))
+    // clearConsole()
+    log(chalk.gray('bundling... [' + chalk.blue((new Date().toLocaleString())) + ']'))
 
     var opts = Object.assign({}, options)
 
@@ -264,7 +270,7 @@ function init (options) {
     var buildStart = Date.now()
 
     rollup.rollup(opts).then(function (bundle) {
-    console.log('bla')
+      // console.log('bla')
       cache = bundle
 
       // close globalWatcher if it was on
@@ -280,7 +286,7 @@ function init (options) {
 
         // skip plugin helper modules
         if (/\0/.test(id)) {
-          console.log(chalk.yellow('skipping helper module'))
+          log(chalk.yellow('skipping helper module'))
           continue
         }
 
@@ -288,24 +294,32 @@ function init (options) {
           var watcher = chokidar.watch(id)
           watcher.on('change', trigger)
           watchers[id] = watcher
-          console.log('watcher added')
+          var cwd = process.cwd()
+          var base = cwd.substring( cwd.lastIndexOf('/') )
+          var filePath = base + id.substring( cwd.length )
+          console.log('  \033[90mwatching\033[0m %s', filePath);
         }
       }
 
       return bundle.write(opts)
     }).then(function () {
       var delta = Date.now() - buildStart
-      console.log('bundling took: ' + chalk.cyan(delta) + ' milliseconds')
+      log('bundling took: ' + chalk.cyan(delta) + ' milliseconds')
+      log(chalk['green']('Success.'))
 
-      process.stdout.write(chalk['green']('Success.'))
+      // var str = (chalk.gray('compiled ') + options.dest)
+      // process.stdout.write(str)
+
+      var filePath = options.dest || 'successfully'
+      console.log('  \033[90mcompiled\033[0m %s', filePath);
 
       // create dots after success message to more easily
       // distinguish between old and new rebuilds
-      for (var i = 0; i < 22; i++) {
-        setTimeout(function () {
-          process.stdout.write(chalk['green']('.'))
-        }, i * 15)
-      }
+      // for (var i = 0; i < 22; i++) {
+      //   setTimeout(function () {
+      //     process.stdout.write(chalk['green']('.'))
+      //   }, i * 15)
+      // }
 
     }, function (err) {
       console.log('error')

@@ -14,4 +14,4 @@ import App from './App.jsx'
 // }
 
 console.log(<div animal={'giraffe'} />)
-console.log(<App name='app' />)
+console.log(<App name='bebop' />)
