@@ -4169,6 +4169,14 @@ module.exports = interopDefault(require$$0);
 
 var React = interopDefault(react);
 
+var Component = React.createClass({
+  render: function () {
+    return (
+      React.createElement( 'div', null, "Component ", (new Date()).toLocaleString() )
+    )
+  }
+})
+
 console.log('Hello world, message: ' + message)
 
 // fake react
@@ -4179,5 +4187,6 @@ console.log('Hello world, message: ' + message)
 // }
 
 console.log(React.createElement( 'div', { animal: 'giraffe' }))
+console.log(React.createElement( Component, { name: 'app' }))
 
 }());
