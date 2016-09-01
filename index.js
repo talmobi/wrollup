@@ -11,6 +11,20 @@ var realpathSync = fs.realpathSync
 
 var requireFromString = require('require-from-string')
 
+function cc (text, code) {
+  return ('\033[' + code + text + '\033[0m')
+}
+
+var c = {
+  'cyan': '36m',
+  'magenta': '35m',
+  'blue': '34m',
+  'yellow': '33m',
+  'green': '32m',
+  'red': '31m',
+  'gray': '90m',
+}
+
 var path = require('path')
 
 // var _eval = require('eval')
@@ -39,12 +53,12 @@ rollup.rollup({
 }).then(function (bundle) {
   var result = bundle.generate({ format: 'cjs' })
   var opts = requireFromString(result.code)
-  console.log(opts)
+  // console.log(opts)
   init(opts)
 }).then(function () {
-  console.log('initliaized')
+  // console.log('initliaized')
 }, function (err) {
-  console.log(err)
+  throw err
 })
 
 
@@ -152,8 +166,8 @@ var contents = fs.readFileSync(configPath, 'utf8')
 // })
 
 function init (options) {
-  console.log('init called')
-  console.log(options)
+  //console.log('init called')
+  //console.log(options)
 
   // used to listen for change on all source files when an error occurs
   // in order to re-initliaize source watching/bundling
@@ -171,6 +185,8 @@ function init (options) {
   }
 
   function sliceOfFile (file, pos) {
+    // console.log('slice file: ' + file)
+    // console.log('slice pos: ' + pos)
     var lineNumber = pos.line - 1
     var column = pos.column
     var contents = fs.readFileSync(file, 'utf8')
@@ -207,7 +223,7 @@ function init (options) {
     // lastly push in small arrow indicator
     var lastLine = results[results.length - 1]
     var indicator = []
-    for (i = 0; i < lastLine.length; i++) indicator.push('_')
+    for (i = 0; i < column; i++) indicator.push('_')
     if (column < 0) {
       indicator.push('^')
     } else {
@@ -235,25 +251,36 @@ function init (options) {
 
   function honeydripError (err) {
     // console.log('honeydripping')
-    var honey = Object.assign({}, err)
-    var type = err.stack.substring(0, err.stack.indexOf(':'))
-    var info = err.stack.substring(0, err.stack.indexOf('/'))
-    var file = honey.file
-    info += '[' + file.substring(file.lastIndexOf('/') + 1) + ']'
-    honey.type = type
-    honey.info = info
+    try {
+      // console.log('----  KEYS  ----')
+      // console.log(Object.keys(err))
+      // console.log('-------------')
+      // console.log(err.id)
+      // console.log('-------------')
 
-    var e = {
-      type: info.substring(0, info.indexOf(':')),
-      msg: info.substring(info.indexOf(':') + 1, info.indexOf('[')),
-      file: file,
-      stub: file.substring(file.lastIndexOf('/') + 1),
-      path: file.substring(0, file.lastIndexOf('/') + 1)
+      var honey = Object.assign({}, err)
+      var type = err.stack.substring(0, err.stack.indexOf(':'))
+      var info = err.stack.substring(0, err.stack.indexOf('/'))
+      var file = honey.file || honey.id
+      info += '[' + file.substring(file.lastIndexOf('/') + 1) + ']'
+      honey.type = type
+      honey.info = info
+
+      var e = {
+        type: honey.code || info.substring(0, info.indexOf(':')),
+        msg: info.substring(info.indexOf(':') + 1, info.indexOf('[')),
+        file: file,
+        stub: file.substring(file.lastIndexOf('/') + 1),
+        path: file.substring(0, file.lastIndexOf('/') + 1)
+      }
+      honey.info = e
+
+      honey.slice = sliceOfFile(file, honey.loc)
+      return [e.type, honey.loc, honey.info, honey.slice]
+    } catch (e) {
+      console.error(e)
+      return e // return honey error for debugging purposes
     }
-    honey.info = e
-
-    honey.slice = sliceOfFile(honey.file, honey.loc)
-    return [honey.code, honey.loc, honey.info, honey.slice]
   }
 
   function build () {
@@ -311,7 +338,8 @@ function init (options) {
       // process.stdout.write(str)
 
       var filePath = options.dest || 'successfully'
-      console.log('  \033[90mcompiled\033[0m %s', filePath);
+      //console.log('  \033[90mcompiled\033[0m %s', filePath);
+      console.log(cc('compiled', c['gray']) + ' %s', filePath);
 
       // create dots after success message to more easily
       // distinguish between old and new rebuilds
@@ -322,19 +350,28 @@ function init (options) {
       // }
 
     }, function (err) {
-      console.log('error')
-      console.log(err)
+      // console.log('log: in error')
+      // console.error('err: in error')
+      // console.log('error')
+      // console.log(err)
       var honey = honeydripError(err)
       var error = []
-      error.push('')
-      error.push(chalk.gray('``` ') + chalk.red(honey[0]))
+      // error.push('')
+      // error.push('\n')
+      // error.push(cc('-------------------', c['gray']))
+      // error.push('\n')
+
+      // error.push(chalk.gray('``` \033[31m' + honey[0] + '\033[0m'))
+      error.push(cc('``` ', c['gray']) + cc(honey[0], c['red']))
+
       honey[3].forEach(function (line) { error.push(line) })
       // console.log('```')
       // console.log(honey[2])
       var e = honey[2]
-      error.push(chalk.magenta(e.type) + ':' + e.msg + '[' + chalk.magenta(e.stub) + ']')
-      error.push(chalk.gray('url: ' + e.path) + chalk.magenta(e.stub))
+      error.push(cc(e.type, c['magenta']) + ':' + e.msg + '[' + cc(e.stub, c['magenta']) + ']')
+      error.push(cc('url: ' + e.path, c['gray']) + cc(e.stub, c['magenta']))
 
+      // console.error(error.join('\n'))
       console.error(error.join('\n'))
 
       // temporary watcher to listen for all changes to rebuild to
