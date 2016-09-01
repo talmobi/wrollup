@@ -3,6 +3,8 @@ var chokidar = require('chokidar')
 var chalk = require('chalk')
 var fs = require('fs')
 
+var os = require('os')
+
 var realpathSync = fs.realpathSync
 
 // var relative = require('require-relative')
@@ -10,6 +12,11 @@ var realpathSync = fs.realpathSync
 // var commonjs = require('rollup-plugin-commonjs')
 
 var requireFromString = require('require-from-string')
+
+var __last_error = null
+
+var __error_timeout = null
+var __warning_timeout = null
 
 function cc (text, code) {
   return ('\033[' + code + text + '\033[0m')
@@ -240,12 +247,12 @@ function init (options) {
   function triggerRebuild () {
     clearTimeout(_timeout)
     _timeout = setTimeout(function () {
-      log(chalk.gray('triggering...'))
+      // console.log(chalk.gray('triggering...'))
     }, 20)
     clearTimeout(buildTimeout)
     buildTimeout = setTimeout(function () {
       build()
-    }, 50)
+    }, 75)
   }
   var trigger = triggerRebuild
 
@@ -278,8 +285,9 @@ function init (options) {
       honey.slice = sliceOfFile(file, honey.loc)
       return [e.type, honey.loc, honey.info, honey.slice]
     } catch (e) {
-      console.error(e)
-      return e // return honey error for debugging purposes
+      //console.error(e)
+      // return e // return honey error for debugging purposes
+      return err // return original error (probably a warning)
     }
   }
 
@@ -295,6 +303,13 @@ function init (options) {
     }
 
     var buildStart = Date.now()
+
+    function throwWarning () {
+    }
+
+    opts.onwarn = function (warning) {
+      throwWarning(warning)
+    }
 
     rollup.rollup(opts).then(function (bundle) {
       // console.log('bla')
@@ -317,9 +332,18 @@ function init (options) {
           continue
         }
 
+        // re-bind watchers on other platforms
+        if (watchers[id] && os.platform() !== 'darwin') {
+          var watcher = watchers[id]
+          watcher.close()
+          watchers[id] = null
+        }
+
         if (!watchers[id]) {
           var watcher = chokidar.watch(id)
-          watcher.on('change', trigger)
+          watcher.on('change', trigger, {
+            usePolling: os.platform() !== 'darwin'
+          })
           watchers[id] = watcher
           var cwd = process.cwd()
           var base = cwd.substring( cwd.lastIndexOf('/') )
@@ -330,6 +354,15 @@ function init (options) {
 
       return bundle.write(opts)
     }).then(function () {
+
+      // console.log('XXXXXXXXXXXXXXXXXX')
+      // console.log('XXXXXXXXXXXXXXXXXX')
+      // console.log(a)
+      // console.log(b)
+      // console.log(c)
+      // console.log('XXXXXXXXXXXXXXXXXX')
+      // console.log('XXXXXXXXXXXXXXXXXX')
+
       var delta = Date.now() - buildStart
       log('bundling took: ' + chalk.cyan(delta) + ' milliseconds')
       log(chalk['green']('Success.'))
@@ -350,29 +383,39 @@ function init (options) {
       // }
 
     }, function (err) {
+
       // console.log('log: in error')
       // console.error('err: in error')
       // console.log('error')
       // console.log(err)
       var honey = honeydripError(err)
-      var error = []
-      // error.push('')
-      // error.push('\n')
-      // error.push(cc('-------------------', c['gray']))
-      // error.push('\n')
 
-      // error.push(chalk.gray('``` \033[31m' + honey[0] + '\033[0m'))
-      error.push(cc('``` ', c['gray']) + cc(honey[0], c['red']))
+      try {
+        var error = []
+        // error.push('')
+        // error.push('\n')
+        // error.push(cc('-------------------', c['gray']))
+        // error.push('\n')
 
-      honey[3].forEach(function (line) { error.push(line) })
-      // console.log('```')
-      // console.log(honey[2])
-      var e = honey[2]
-      error.push(cc(e.type, c['magenta']) + ':' + e.msg + '[' + cc(e.stub, c['magenta']) + ']')
-      error.push(cc('url: ' + e.path, c['gray']) + cc(e.stub, c['magenta']))
+        // error.push(chalk.gray('``` \033[31m' + honey[0] + '\033[0m'))
+        error.push(cc('``` ', c['gray']) + cc(honey[0], c['red']))
 
-      // console.error(error.join('\n'))
-      console.error(error.join('\n'))
+        honey[3].forEach(function (line) { error.push(line) })
+        // console.log('```')
+        // console.log(honey[2])
+        var e = honey[2]
+        error.push(cc(e.type, c['magenta']) + ':' + e.msg + '[' + cc(e.stub, c['magenta']) + ']')
+        error.push(cc('url: ' + e.path, c['gray']) + cc(e.stub, c['magenta']))
+
+        // console.error(error.join('\n'))
+
+        // console.error(error.join('\n'))
+        printError(error.join('\n'))
+      } catch (e) {
+        // just print the raw error on failure
+        // console.error(honey)
+        printError(honey)
+      }
 
       // temporary watcher to listen for all changes to rebuild to
       if (!globalWatcher) {
@@ -381,8 +424,9 @@ function init (options) {
         //   // console.log(evt, path)
         //   triggerRebuild()
         // }
-        globalWatcher = chokidar.watch('**/*.js')
-        globalWatcher.on('add', trigger).on('change', trigger)
+        globalWatcher = chokidar.watch('**/*.js?')
+        globalWatcher.on('add', trigger)
+        globalWatcher.on('change', trigger)
         log('global watcher setup')
       }
     })
@@ -391,4 +435,16 @@ function init (options) {
   }
 
   build()
+}
+
+function printError (err) {
+  if (__last_error != err) { // dont repeat errors/warnings
+    console.error(err)
+    __last_error = err
+  }
+
+  clearTimeout(__error_timeout)
+  __error_timeout = setTimeout(function () {
+    __last_error = null
+  }, 3000)
 }
