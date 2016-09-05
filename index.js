@@ -19,7 +19,9 @@ var __error_timeout = null
 var __warning_timeout = null
 
 function cc (text, code) {
-  return ('\033[' + code + text + '\033[0m')
+  // return ('\033[' + code + text + '\033[0m')
+  return ('\u001b[' + code + text + '\u001b[0m')
+
 }
 
 var c = {
@@ -69,8 +71,8 @@ rollup.rollup({
 })
 
 
-return
-var contents = fs.readFileSync(configPath, 'utf8')
+// return
+// var contents = fs.readFileSync(configPath, 'utf8')
 
 
 
@@ -348,7 +350,7 @@ function init (options) {
           var cwd = process.cwd()
           var base = cwd.substring( cwd.lastIndexOf('/') )
           var filePath = base + id.substring( cwd.length )
-          console.log('  \033[90mwatching\033[0m %s', filePath);
+          console.log('  \u001b[90mwatching\u001b[0m %s', filePath);
         }
       }
 
