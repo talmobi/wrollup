@@ -7,6 +7,8 @@ var os = require('os')
 
 var realpathSync = fs.realpathSync
 
+var verbose = false
+
 // var relative = require('require-relative')
 // var nodeResolve = require('rollup-plugin-node-resolve')
 // var commonjs = require('rollup-plugin-commonjs')
@@ -67,9 +69,10 @@ function setupGlobalWatcher () {
     globalWatcher = chokidar.watch('**/**/*.js*')
     globalWatcher.on('add', trigger, { usePolling: true })
     globalWatcher.on('change', trigger, { usePolling: true })
-    console.log(cc('starting build error watcher [**/**/*.js]', c['yellow']))
+
+    verbose && console.log(cc('starting build error watcher [**/**/*.js]', c['yellow']))
   } else {
-    console.log(cc('build error watcher still ready [**/**/*.js]', c['yellow']))
+    verbose && console.log(cc('build error watcher still ready [**/**/*.js]', c['yellow']))
   }
 }
 
@@ -236,7 +239,7 @@ function build () {
 
     // close globalWatcher if it was on
     if (globalWatcher !== undefined) {
-      console.log(cc('removing global watcher', c['yellow']))
+      verbose && console.log(cc('removing global watcher', c['yellow']))
       globalWatcher.close()
       globalWatcher = undefined
     }
