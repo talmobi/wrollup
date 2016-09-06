@@ -57,19 +57,19 @@ const stderr = console.error.bind( console )
 // in order to re-initliaize source watching/bundling
 var globalWatcher = undefined
 
+var _globalWatcherTimeout = null
 function setupGlobalWatcher () {
   if (globalWatcher === undefined) {
-    console.log('trying to set up globalWatcher (onwarn)')
     // function trigger (evt, path) {
     //   // console.log(evt, path)
     //   triggerRebuild()
     // }
-    globalWatcher = chokidar.watch('**/**/*.js')
+    globalWatcher = chokidar.watch('**/**/*.js*')
     globalWatcher.on('add', trigger, { usePolling: true })
     globalWatcher.on('change', trigger, { usePolling: true })
-    console.log('global watcher setup')
+    console.log(cc('starting build error watcher [**/**/*.js]', c['yellow']))
   } else {
-    console.log('globalWatcher already setup')
+    console.log(cc('build error watcher still ready [**/**/*.js]', c['yellow']))
   }
 }
 
@@ -78,7 +78,7 @@ rollup.rollup({
   onwarn: function (message) {
     if ( /Treating .+ as external dependency/.test( message ) ) return
     printError( message )
-    setupGlobalWatcher()
+    //setupGlobalWatcher()
   }
   // plugins: [ nodeResolve(), commonjs() ]
 }).then(function (bundle) {
@@ -235,7 +235,8 @@ function build () {
     cache = bundle
 
     // close globalWatcher if it was on
-    if (globalWatcher) {
+    if (globalWatcher !== undefined) {
+      console.log(cc('removing global watcher', c['yellow']))
       globalWatcher.close()
       globalWatcher = undefined
     }
@@ -342,7 +343,7 @@ function build () {
     }
 
     // temporary watcher to listen for all changes to rebuild to
-    setupGlobalWatcher()
+    //setupGlobalWatcher()
   })
 
   // console.log('after')
@@ -352,6 +353,7 @@ function printError (err) {
   if (__last_error != err) { // dont repeat errors/warnings
     console.error(err)
     __last_error = err
+    setupGlobalWatcher() // recover watch process after build errors
   }
 
   clearTimeout(__error_timeout)
