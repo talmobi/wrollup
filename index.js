@@ -7,7 +7,7 @@ var os = require('os')
 
 var realpathSync = fs.realpathSync
 
-var verbose = false
+var verbose = false // for debugging
 
 // var relative = require('require-relative')
 // var nodeResolve = require('rollup-plugin-node-resolve')
@@ -66,11 +66,18 @@ function setupGlobalWatcher () {
     //   // console.log(evt, path)
     //   triggerRebuild()
     // }
-    globalWatcher = chokidar.watch('**/**/*.js*')
+    globalWatcher = chokidar.watch('**/**/*.js?')
     globalWatcher.on('add', trigger, { usePolling: true })
     globalWatcher.on('change', trigger, { usePolling: true })
 
     verbose && console.log(cc('starting build error watcher [**/**/*.js]', c['yellow']))
+
+    Object.keys(watchers).forEach(function (watcher) {
+      try {
+        watcher.close()
+      } catch (e) {} // ignore
+    })
+    watchers = {}
   } else {
     verbose && console.log(cc('build error watcher still ready [**/**/*.js]', c['yellow']))
   }
@@ -168,13 +175,13 @@ var buildTimeout = null
 var _timeout = null
 function triggerRebuild () {
   clearTimeout(_timeout)
-  _timeout = setTimeout(function () {
-    // console.log(chalk.gray('triggering...'))
-  }, 20)
+  // _timeout = setTimeout(function () {
+  //   verbose && console.log(chalk.gray('triggering...'))
+  // }, 20)
   clearTimeout(buildTimeout)
   buildTimeout = setTimeout(function () {
     build()
-  }, 75)
+  }, 33)
 }
 var trigger = triggerRebuild
 
@@ -244,9 +251,9 @@ function build () {
       globalWatcher = undefined
     }
 
-    for (var i = 0; i < bundle.modules.length; i++) {
-      var module = bundle.modules[i]
-      var id = module.id
+    for (let i = 0; i < bundle.modules.length; i++) {
+      let module = bundle.modules[i]
+      let id = module.id
       // log('[' + module.id + '] for loop, index: ' + i)
 
       // skip plugin helper modules
@@ -266,9 +273,29 @@ function build () {
         var cwd = process.cwd()
         var base = cwd.substring( cwd.lastIndexOf('/') )
         var filePath = base + id.substring( cwd.length )
+
+        // ignore node_modules
         if (filePath.toLowerCase().indexOf('node_modules') === -1) {
           var watcher = chokidar.watch(id)
-          watcher.on('change', trigger, {
+          watcher.on('change', function (path) {
+            var now = Date.now()
+            var t = watcher.__mtime
+
+            fs.stat(id, function (err, stats) {
+              var mtime = stats.mtime
+
+              if (err) return console.log(err)
+
+              if (t === undefined || mtime > t) {
+                verbose && console.log('trigger from: ' + id)
+                trigger()
+                watcher.__mtime = mtime
+              } else {
+                verbose && console.log('ignoring trigger, nothing modified from: ' + id)
+              }
+            })
+          }, {
+            // use polling on linux and windows
             usePolling: os.platform() !== 'darwin'
           })
           watchers[id] = watcher
