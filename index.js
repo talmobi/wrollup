@@ -1,3 +1,5 @@
+'use strict'
+
 var rollup = require('rollup')
 var chokidar = require('chokidar')
 var chalk = require('chalk')
@@ -46,7 +48,7 @@ var watchers = {}
 // chalk colours
 var colors = ['green', 'yellow', 'blue', 'cyan', 'magenta', 'white']
 
-var configPath = path.resolve(process.argv[2] || 'rollup.config.js')
+var configPath = path.resolve(process.argv[3] || process.argv[2] || 'rollup.config.js')
 
 // return console.log('configPath: ' + configPath)
 
