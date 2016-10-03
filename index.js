@@ -11,6 +11,8 @@ var realpathSync = fs.realpathSync
 
 var verbose = false // for debugging
 
+var argv = require('minimist')(process.argv.slice(2))
+
 // var relative = require('require-relative')
 // var nodeResolve = require('rollup-plugin-node-resolve')
 // var commonjs = require('rollup-plugin-commonjs')
@@ -42,13 +44,14 @@ var path = require('path')
 
 // var _eval = require('eval')
 
+var ENABLE_CACHE = !argv['nocache']
 var cache
 var watchers = {}
 
 // chalk colours
 var colors = ['green', 'yellow', 'blue', 'cyan', 'magenta', 'white']
 
-var configPath = path.resolve(process.argv[3] || process.argv[2] || 'rollup.config.js')
+var configPath = path.resolve(argv['c'] || argv['config'] || 'rollup.config.js')
 
 // return console.log('configPath: ' + configPath)
 
@@ -229,7 +232,7 @@ function build () {
   var opts = Object.assign({}, options)
 
   // use cache if available
-  if (cache && opts) {
+  if (ENABLE_CACHE && cache && opts) {
     opts.cache = cache
   }
 
