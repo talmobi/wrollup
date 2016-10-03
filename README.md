@@ -9,7 +9,7 @@
 ## Simple to use
 ```bash
 npm install -g wrollup
-wrollup path/to/rollup.config.js # looks for ./rollup.config.js by default
+wrollup -c path/to/rollup.config.js # looks for ./rollup.config.js by default
 ```
 
 # About
@@ -20,6 +20,12 @@ The plugin 'rollup-watch' is pretty OK, but has a few issues like not being able
 
 # How
 Using a similar init process we use rollup internally to parse the rollup.config.js file and star the watcher with a set of streamlined logging procedure (similar to stylus-lang) and pretty error parsing.
+
+# Arguments
+```bash
+-c, --config - specify path to rollup.config.js (defaults to rollup.config.js)
+--nocache    - disables bundle caching
+```
 
 # Installation
 ```bash
