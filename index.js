@@ -9,9 +9,9 @@ var os = require('os')
 
 var realpathSync = fs.realpathSync
 
-var verbose = false // for debugging
-
 var argv = require('minimist')(process.argv.slice(2))
+
+var verbose = !!argv.verbose // for debugging
 
 // var relative = require('require-relative')
 // var nodeResolve = require('rollup-plugin-node-resolve')
@@ -71,11 +71,11 @@ function setupGlobalWatcher () {
     //   // console.log(evt, path)
     //   triggerRebuild()
     // }
-    globalWatcher = chokidar.watch('**/**/*.js?')
+    globalWatcher = chokidar.watch('**/*.js*')
     globalWatcher.on('add', trigger, { usePolling: true })
     globalWatcher.on('change', trigger, { usePolling: true })
 
-    verbose && console.log(cc('starting build error watcher [**/**/*.js]', c['yellow']))
+    verbose && console.log(cc('starting build error watcher [**/*.js*]', c['yellow']))
 
     Object.keys(watchers).forEach(function (watcher) {
       try {
@@ -84,7 +84,7 @@ function setupGlobalWatcher () {
     })
     watchers = {}
   } else {
-    verbose && console.log(cc('build error watcher still ready [**/**/*.js]', c['yellow']))
+    verbose && console.log(cc('build error watcher still ready [**/*.js*]', c['yellow']))
   }
 }
 
