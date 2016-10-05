@@ -1,6 +1,6 @@
 {
   "name": "wrollup",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "watcher for rollup",
   "main": "index.js",
   "bin": {

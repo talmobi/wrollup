@@ -77,12 +77,17 @@ function setupGlobalWatcher () {
 
     verbose && console.log(cc('starting build error watcher [**/*.js*]', c['yellow']))
 
-    Object.keys(watchers).forEach(function (watcher) {
+    var keys = Object.keys(watchers)
+    for (let i = 0; i < keys.length; i++) {
+      let key = keys[i]
+      let w = watchers[key]
       try {
-        watcher.close()
-      } catch (e) {} // ignore
-    })
-    watchers = {}
+        w.close()
+        watchers[key] = undefined
+      } catch (e) {
+        verbose && console.log('failed to close watcher')
+      }
+    }
   } else {
     verbose && console.log(cc('build error watcher still ready [**/*.js*]', c['yellow']))
   }
@@ -271,10 +276,10 @@ function build () {
       if (watchers[id] && os.platform() !== 'darwin') {
         var watcher = watchers[id]
         watcher.close()
-        watchers[id] = null
+        watchers[id] = undefined
       }
 
-      if (!watchers[id]) {
+      if (watchers[id] === undefined) {
         var cwd = process.cwd()
         var base = cwd.substring( cwd.lastIndexOf('/') )
         var filePath = base + id.substring( cwd.length )
@@ -292,7 +297,7 @@ function build () {
               if (err) return console.log(err)
 
               if (t === undefined || mtime > t) {
-                verbose && console.log('trigger from: ' + id)
+                verbose && console.log(cc('trigger from: ' + id, c['yellow']))
                 trigger()
                 watcher.__mtime = mtime
               } else {
