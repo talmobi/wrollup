@@ -12,6 +12,7 @@ var realpathSync = fs.realpathSync
 var argv = require('minimist')(process.argv.slice(2))
 
 var verbose = !!argv.verbose // for debugging
+var nolazy = !!argv['nolazy']
 
 // var relative = require('require-relative')
 // var nodeResolve = require('rollup-plugin-node-resolve')
@@ -231,25 +232,59 @@ function honeydripError (err) {
   }
 }
 
+function generateLazyCache () {
+  if (nolazy) return
+  // has to do with workaround for: https://github.com/rollup/rollup/issues/1010
+  setTimeout(function () {
+    lazyCachedBundle = JSON.parse(JSON.stringify(cache))
+    verbose && console.log(chalk.yellow('lazyCachedBundle pre-generated for the next bundle'))
+    verbose && console.log(chalk.yellow(''))
+  }, 0)
+}
+
 function build () {
   // clearConsole()
-  log(chalk.gray('bundling... [' + chalk.blue((new Date().toLocaleString())) + ']'))
+  verbose && console.log(chalk.gray('bundling... [' + chalk.blue((new Date().toLocaleString())) + ']'))
 
   var opts = Object.assign({}, options)
 
   // use cache if available
   if (ENABLE_CACHE && cache && opts) {
+    if (verbose && !nolazy) {
+      if (lazyCachedBundle) {
+        console.log(chalk.yellow('using lazyCachedBundle'))
+      } else {
+        console.log(chalk.yellow('no lazyCachedBundle, generating cache...'))
+      }
+    }
+
     // this work-around is needed for rollup v0.35.0-> currently
     // rollup version 0.34.13 is the latest that works fine
     // the issue seems to lie in rollup implemetning a deepClone fn
     // in this commit: https://github.com/rollup/rollup/commit/83ccb9725374e0fde9d07043959c397b15d26c67#diff-5c98da346b849e07de8c1173579789b0L320
     //
     // for more info see the issue on github: https://github.com/rollup/rollup/issues/1010
-    opts.cache = lazyCachedBundle || JSON.parse(JSON.stringify(cache))
-    // try and do the workaround cache after the build is complete
-    // so that the build times aren't noticably affected
-    lazyCachedBundle = undefined
-    // opts.cache = cache
+    if (!nolazy) {
+      opts.cache = lazyCachedBundle || JSON.parse(JSON.stringify(cache))
+      // try and do the workaround cache after the build is complete
+      // so that the build times aren't noticably affected
+      lazyCachedBundle = undefined
+      // generateLazyCache() function is called after bundle has compiled
+      // to pre-generate the lazyCachedBundle for the next bundle generation
+    } else {
+      // use rollups internal caching without the workaround fix
+      // the workaround is needed for v0.35.0 -> onwards [6th Oct 2016]
+      opts.cache = cache
+      verbose && console.log(chalk.yellow('--nolazy set'))
+    }
+  } else {
+    if (verbose) {
+      if (!ENABLE_CACHE) {
+        console.log(chalk.yellow('--nocache set, not using cache'))
+      } else {
+        console.log(chalk.yellow('no cache found, probably initial build'))
+      }
+    }
   }
 
   var buildStart = Date.now()
@@ -330,6 +365,7 @@ function build () {
 
     return bundle.write(opts)
   }).then(function () {
+    generateLazyCache()
 
     // console.log('XXXXXXXXXXXXXXXXXX')
     // console.log('XXXXXXXXXXXXXXXXXX')
@@ -357,14 +393,7 @@ function build () {
     //     process.stdout.write(chalk['green']('.'))
     //   }, i * 15)
     // }
-
-    // has to do with workaround for: https://github.com/rollup/rollup/issues/1010
-    setTimeout(function () {
-      lazyCachedBundle = JSON.parse(JSON.stringify(cache))
-    }, 0)
-
   }, function (err) {
-
     // console.log('log: in error')
     // console.error('err: in error')
     // console.log('error')
