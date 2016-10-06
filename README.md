@@ -30,17 +30,21 @@ Using a similar init process we use rollup internally to parse the rollup.config
 
 # Installation
 ```bash
-npm install -g wrollup # globally
+npm install --save-dev wrollup # locally (for use with npm scripts)
 ```
 or
 ```bash
-npm install --save-dev wrollup # locally (for use within your npm scripts)
+npm install -g wrollup # globally (not recommended)
 ```
 
 # Requirements
 Rollup
 ```bash
-npm install --save-dev rollup
+npm install --save-dev rollup # locally (for use with npm scripts)
+```
+or
+```bash
+npm install -g rollup # globally (not recommended)
 ```
 
 A rollup config file (looks for rollup.config.js by default). A basic one can be for example:
@@ -50,9 +54,9 @@ import nodeResolve from 'rollup-plugin-node-resolve'
 import commonjs from 'rollup-plugin-commonjs'
 
 export default {
-  entry: 'src/index.js',
-  dest: 'dist/bundle.js',
-  format: 'iife',
+  entry: 'src/index.js',    // required
+  dest: 'dist/bundle.js',   // required
+  format: 'iife',           // required
   plugins: [
     buble(),
     nodeResolve(),
