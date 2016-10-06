@@ -40,7 +40,7 @@ npm install --save-dev wrollup # locally (for use within your npm scripts)
 # Requirements
 Rollup
 ```bash
-npm install --save-dev rollup@0.34.10 # latest v0.36.1 seems to have some odd Call stack exceed bugs [5th Oct 2016]
+npm install --save-dev rollup
 ```
 
 A rollup config file (looks for rollup.config.js by default). A basic one can be for example:
