@@ -45,7 +45,8 @@ var path = require('path')
 // var _eval = require('eval')
 
 var ENABLE_CACHE = !argv['nocache']
-var cache
+var cache = undefined
+var lazyCachedBundle = undefined // workarond for: https://github.com/rollup/rollup/issues/1010
 var watchers = {}
 
 // chalk colours
@@ -238,7 +239,17 @@ function build () {
 
   // use cache if available
   if (ENABLE_CACHE && cache && opts) {
-    opts.cache = cache
+    // this work-around is needed for rollup v0.35.0-> currently
+    // rollup version 0.34.13 is the latest that works fine
+    // the issue seems to lie in rollup implemetning a deepClone fn
+    // in this commit: https://github.com/rollup/rollup/commit/83ccb9725374e0fde9d07043959c397b15d26c67#diff-5c98da346b849e07de8c1173579789b0L320
+    //
+    // for more info see the issue on github: https://github.com/rollup/rollup/issues/1010
+    opts.cache = lazyCachedBundle || JSON.parse(JSON.stringify(cache))
+    // try and do the workaround cache after the build is complete
+    // so that the build times aren't noticably affected
+    lazyCachedBundle = undefined
+    // opts.cache = cache
   }
 
   var buildStart = Date.now()
@@ -346,6 +357,11 @@ function build () {
     //     process.stdout.write(chalk['green']('.'))
     //   }, i * 15)
     // }
+
+    // has to do with workaround for: https://github.com/rollup/rollup/issues/1010
+    setTimeout(function () {
+      lazyCachedBundle = JSON.parse(JSON.stringify(cache))
+    }, 0)
 
   }, function (err) {
 
