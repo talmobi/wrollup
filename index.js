@@ -1,6 +1,7 @@
 'use strict'
 
 var rollup = require('rollup')
+var rollup = require('/Users/mollie/temp/rollup/dist/rollup.js')
 var chokidar = require('chokidar')
 var chalk = require('chalk')
 var fs = require('fs')
