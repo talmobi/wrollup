@@ -25,6 +25,7 @@ Using a similar init process we use rollup internally to parse the rollup.config
 ```bash
 -c, --config - specify path to rollup.config.js (defaults to rollup.config.js)
 --nocache    - disables bundle caching
+--verbose    - wrollup will console.log some extra info of what it is doing
 ```
 
 # Installation
@@ -33,10 +34,15 @@ npm install -g wrollup # globally
 ```
 or
 ```bash
-npm install wrollup # locally (for use within your npm scripts)
+npm install --save-dev wrollup # locally (for use within your npm scripts)
 ```
 
 # Requirements
+Rollup
+```bash
+npm install --save-dev rollup@0.34.10 # latest v0.36.1 seems to have some odd Call stack exceed bugs [5th Oct 2016]
+```
+
 A rollup config file (looks for rollup.config.js by default). A basic one can be for example:
 ```js
 import buble from 'rollup-plugin-buble'
