@@ -57,7 +57,7 @@ var configPath = path.resolve(argv['c'] || argv['config'] || 'rollup.config.js')
 
 // return console.log('configPath: ' + configPath)
 
-process.chdir(configPath.substring(0, configPath.lastIndexOf('/')))
+process.chdir(path.dirname(configPath))
 
 const stderr = console.error.bind( console )
 
