@@ -14,8 +14,6 @@ var argv = require('minimist')(process.argv.slice(2))
 var verbose = !!argv.verbose // for debugging
 var nolazy = !!argv['nolazy']
 
-verbose = true
-
 // var relative = require('require-relative')
 // var nodeResolve = require('rollup-plugin-node-resolve')
 // var commonjs = require('rollup-plugin-commonjs')
@@ -73,7 +71,7 @@ function setupGlobalWatcher () {
   if (globalWatcher === undefined) {
 
     var opts = {
-      usePolling: true,
+      usePolling: os.platform() !== 'darwin',
       ignored: /node_modules|[\/\\]\./,
       ignoreInitial: true
     }
@@ -123,7 +121,7 @@ var options = undefined
 
 function init (opts) {
   options = Object.assign({}, opts)
-  console.log(options)
+  // console.log(options)
   build()
 }
 
@@ -237,6 +235,11 @@ function sliceOfFile (file, pos) {
 var buildTimeout = null
 var _timeout = null
 function triggerRebuild (path) {
+  if (options && path.indexOf(options.dest) !== -1) {
+    verbose && console.log(chalk.yellow('ignoring trigger from destination bundle'))
+    return undefined
+  }
+
   var target = path
   verbose && console.log(chalk.yellow('trigger from target [' + chalk.magenta(target) + ']'))
   fs.stat(target, function (err, stats) {
