@@ -14,6 +14,8 @@ var argv = require('minimist')(process.argv.slice(2))
 var verbose = !!argv.verbose // for debugging
 var nolazy = !!argv['nolazy']
 
+verbose = true
+
 // var relative = require('require-relative')
 // var nodeResolve = require('rollup-plugin-node-resolve')
 // var commonjs = require('rollup-plugin-commonjs')
@@ -60,6 +62,7 @@ var configPath = path.resolve(argv['c'] || argv['config'] || 'rollup.config.js')
 process.chdir(path.dirname(configPath))
 
 const stderr = console.error.bind( console )
+var mtimes = {}
 
 // used to listen for change on all source files when an error occurs
 // in order to re-initliaize source watching/bundling
@@ -68,13 +71,16 @@ var globalWatcher = undefined
 var _globalWatcherTimeout = null
 function setupGlobalWatcher () {
   if (globalWatcher === undefined) {
-    // function trigger (evt, path) {
-    //   // console.log(evt, path)
-    //   triggerRebuild()
-    // }
-    globalWatcher = chokidar.watch('**/*.js*')
-    globalWatcher.on('add', trigger, { usePolling: true })
-    globalWatcher.on('change', trigger, { usePolling: true })
+
+    var opts = {
+      usePolling: true,
+      ignored: /node_modules|[\/\\]\./,
+      ignoreInitial: true
+    }
+
+    globalWatcher = chokidar.watch('**/*.js*', opts)
+    globalWatcher.on('add', triggerRebuild)
+    globalWatcher.on('change', triggerRebuild)
 
     verbose && console.log(cc('starting build error watcher [**/*.js*]', c['yellow']))
 
@@ -108,7 +114,7 @@ rollup.rollup({
   // console.log(opts)
   init(opts)
 }).then(function () {
-  // console.log('initliaized')
+  verbose && console.log(chalk.yellow('initliaized'))
 }, function (err) {
   throw err
 })
@@ -117,6 +123,7 @@ var options = undefined
 
 function init (opts) {
   options = Object.assign({}, opts)
+  console.log(options)
   build()
 }
 
@@ -229,17 +236,24 @@ function sliceOfFile (file, pos) {
 
 var buildTimeout = null
 var _timeout = null
-function triggerRebuild () {
-  clearTimeout(_timeout)
-  // _timeout = setTimeout(function () {
-  //   verbose && console.log(chalk.gray('triggering...'))
-  // }, 20)
-  clearTimeout(buildTimeout)
-  buildTimeout = setTimeout(function () {
-    build()
-  }, 33)
+function triggerRebuild (path) {
+  var target = path
+  verbose && console.log(chalk.yellow('trigger from target [' + chalk.magenta(target) + ']'))
+  fs.stat(target, function (err, stats) {
+    if (err) throw err
+
+    if (mtimes[target] === undefined || stats.mtime > mtimes[target]) {
+      mtimes[target] = stats.mtime
+      clearTimeout(buildTimeout)
+      buildTimeout = setTimeout(function () {
+        build()
+      }, 33)
+    } else {
+      // ignore, nothing modified
+      verbose && console.log('-- nothing modified --')
+    }
+  })
 }
-var trigger = triggerRebuild
 
 function honeydripError (err) {
   // console.log('honeydripping')
@@ -298,7 +312,7 @@ function build () {
       if (lazyCachedBundle) {
         console.log(chalk.yellow('using lazyCachedBundle'))
       } else {
-        console.log(chalk.yellow('no lazyCachedBundle, generating cache...'))
+        // console.log(chalk.yellow('no lazyCachedBundle, generating cache...'))
       }
     }
 
@@ -309,6 +323,7 @@ function build () {
     //
     // for more info see the issue on github: https://github.com/rollup/rollup/issues/1010
     if (!nolazy) {
+      verbose && console.log(chalk.yellow('no lazyCachedBundle, generating cache...'))
       opts.cache = lazyCachedBundle || JSON.parse(JSON.stringify(cache))
       // try and do the workaround cache after the build is complete
       // so that the build times aren't noticably affected
@@ -346,6 +361,7 @@ function build () {
     // close globalWatcher if it was on
     if (globalWatcher !== undefined) {
       verbose && console.log(cc('removing global watcher', c['yellow']))
+      globalWatcher.unwatch('*')
       globalWatcher.close()
       globalWatcher = undefined
     }
@@ -375,30 +391,12 @@ function build () {
 
         // ignore node_modules
         if (filePath.toLowerCase().indexOf('node_modules') === -1) {
-          var watcher = chokidar.watch(id)
-          watcher.on('change', function (path) {
-            var now = Date.now()
-            var t = watcher.__mtime
-
-            fs.stat(id, function (err, stats) {
-              var mtime = stats.mtime
-
-              if (err) return console.log(err)
-
-              if (t === undefined || mtime > t) {
-                verbose && console.log(cc('trigger from: ' + id, c['yellow']))
-                trigger()
-                watcher.__mtime = mtime
-              } else {
-                verbose && console.log('ignoring trigger, nothing modified from: ' + id)
-              }
-            })
-          }, {
+          var watcher = chokidar.watch(id, {
             // use polling on linux and windows
             usePolling: os.platform() !== 'darwin'
           })
+          watcher.on('change', triggerRebuild)
           watchers[id] = watcher
-
           console.log('  \u001b[90mwatching\u001b[0m %s', filePath);
         } else {
           // dont watch node_modules
