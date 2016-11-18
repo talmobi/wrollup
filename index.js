@@ -61,7 +61,6 @@ process.chdir(path.dirname(configPath))
 
 const stderr = console.error.bind( console )
 
-
 // used to listen for change on all source files when an error occurs
 // in order to re-initliaize source watching/bundling
 var globalWatcher = undefined
@@ -135,7 +134,7 @@ function clearConsole () {
 function sliceOfFile (file, pos) {
   // console.log('slice file: ' + file)
   // console.log('slice pos: ' + pos)
-  var lineNumber = pos.line - 1
+  var errorLineNumber = pos.line - 1
   var column = pos.column
   var contents = fs.readFileSync(file, 'utf8')
   var lines = contents.split('\n')
@@ -143,11 +142,11 @@ function sliceOfFile (file, pos) {
   var line, index, i
   // find last non-empty line
   for (i = 0; i < lines.length; i++) {
-    index = lineNumber - i
+    index = errorLineNumber - i
     line = lines[index]
     if (line.trim()) {
       // non-empty line found
-      lineNumber = index
+      errorLineNumber = index
       break
     }
 
@@ -156,28 +155,55 @@ function sliceOfFile (file, pos) {
     column = -1
   }
 
-  // grab last 5 lines
+  // grab last 8 lines
+  var linesBelow = 3
+  var linesAbove = 6
   var results = []
-  for (i = 0; i < 5; i++) {
-    index = lineNumber + i - 4
-    if (index >= 0) {
+  var errorLineIndex = 0
+  for (i = 0; i <= (linesBelow + linesAbove); i++) {
+    index = errorLineNumber + i - linesAbove
+    if (index === errorLineNumber) errorLineIndex = (results.length + 1)
+    if (index >= 0 && index < lines.length) {
       var l = lines[index]
-      // parse distracting escapes
+      // parse away distracting character escapes
       l = l.split('\'').join('"')
-      results.push(l)
+      // var prefix = ('    ' + (index + 1) + '| ')
+      results.push({
+        line: l,
+        lineNumber: index + 1
+      })
     }
   }
 
-  // lastly push in small arrow indicator
-  var lastLine = results[results.length - 1]
+  // add line numbers to lines, pad by biggest line number
+  var lineLeftPadding = String(results[results.length - 1].lineNumber).length + 1
+  // console.log('lineLeftPadding: ' + lineLeftPadding)
+  var resultLines = results.map(function (item) {
+    var length = String(item.lineNumber).length
+    var delta = (lineLeftPadding - length)
+    var prefix = ' '
+    while (--delta > 0) prefix += ' '
+    prefix += String(item.lineNumber)
+    prefix += '| '
+    return (prefix + item.line)
+  })
+
+  results = resultLines
+
+  // lastly push in small arrow indicator after the error line
+  // var lastLine = results[results.length - 1]
   var indicator = []
-  for (i = 0; i < column; i++) indicator.push('_')
+  for (i = 0; i < (column + lineLeftPadding + 2); i++) indicator.push('-')
   if (column < 0) {
     indicator.push('^')
   } else {
-    indicator[column] = '^'
+    indicator[(column + lineLeftPadding + 2)] = '^'
   }
-  results.push(indicator.join(''))
+
+  var arrowLine = indicator.join('')
+  results = results.slice(0, errorLineIndex)
+                    .concat([arrowLine])
+                    .concat(results.slice(errorLineIndex))
   results.push('')
 
   return results
@@ -297,7 +323,6 @@ function build () {
   }
 
   rollup.rollup(opts).then(function (bundle) {
-    // console.log('bla')
     cache = bundle
 
     // close globalWatcher if it was on
