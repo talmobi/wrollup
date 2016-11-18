@@ -175,6 +175,24 @@ function sliceOfFile (file, pos) {
     }
   }
 
+  // calculate minimum start indentation we can slice off
+  // without affecting relative indentation
+  var minLeftPadding = 999
+  results.forEach(function (item) {
+    var counter = 0
+    for (var i = 0; i < item.line.length; i++) {
+      if (item.line[i].trim().length === 0) continue
+      minLeftPadding = Math.min(minLeftPadding, i)
+      break
+    }
+  })
+
+  // cut off the extra start indentation
+  results = results.map(function (item) {
+    item.line = item.line.slice(minLeftPadding)
+    return item
+  })
+
   // add line numbers to lines, pad by biggest line number
   var lineLeftPadding = String(results[results.length - 1].lineNumber).length + 1
   // console.log('lineLeftPadding: ' + lineLeftPadding)
@@ -193,11 +211,11 @@ function sliceOfFile (file, pos) {
   // lastly push in small arrow indicator after the error line
   // var lastLine = results[results.length - 1]
   var indicator = []
-  for (i = 0; i < (column + lineLeftPadding + 2); i++) indicator.push('-')
+  for (i = 0; i < (column + lineLeftPadding + 2 - minLeftPadding); i++) indicator.push('-')
   if (column < 0) {
     indicator.push('^')
   } else {
-    indicator[(column + lineLeftPadding + 2)] = '^'
+    indicator[(column + lineLeftPadding + 2 - minLeftPadding)] = '^'
   }
 
   var arrowLine = indicator.join('')
