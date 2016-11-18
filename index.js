@@ -157,7 +157,7 @@ function sliceOfFile (file, pos) {
 
   // grab last 8 lines
   var linesBelow = 3
-  var linesAbove = 6
+  var linesAbove = 5
   var results = []
   var errorLineIndex = 0
   for (i = 0; i <= (linesBelow + linesAbove); i++) {
