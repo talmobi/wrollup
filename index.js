@@ -60,7 +60,7 @@ var configPath = path.resolve(argv['c'] || argv['config'] || 'rollup.config.js')
 process.chdir(path.dirname(configPath))
 
 const stderr = console.error.bind( console )
-
+var mtimes = {}
 
 // used to listen for change on all source files when an error occurs
 // in order to re-initliaize source watching/bundling
@@ -69,13 +69,16 @@ var globalWatcher = undefined
 var _globalWatcherTimeout = null
 function setupGlobalWatcher () {
   if (globalWatcher === undefined) {
-    // function trigger (evt, path) {
-    //   // console.log(evt, path)
-    //   triggerRebuild()
-    // }
-    globalWatcher = chokidar.watch('**/*.js*')
-    globalWatcher.on('add', trigger, { usePolling: true })
-    globalWatcher.on('change', trigger, { usePolling: true })
+
+    var opts = {
+      usePolling: os.platform() !== 'darwin',
+      ignored: /node_modules|[\/\\]\./,
+      ignoreInitial: true
+    }
+
+    globalWatcher = chokidar.watch('**/*.js*', opts)
+    globalWatcher.on('add', triggerRebuild)
+    globalWatcher.on('change', triggerRebuild)
 
     verbose && console.log(cc('starting build error watcher [**/*.js*]', c['yellow']))
 
@@ -109,7 +112,7 @@ rollup.rollup({
   // console.log(opts)
   init(opts)
 }).then(function () {
-  // console.log('initliaized')
+  verbose && console.log(chalk.yellow('initliaized'))
 }, function (err) {
   throw err
 })
@@ -118,6 +121,7 @@ var options = undefined
 
 function init (opts) {
   options = Object.assign({}, opts)
+  // console.log(options)
   build()
 }
 
@@ -135,7 +139,7 @@ function clearConsole () {
 function sliceOfFile (file, pos) {
   // console.log('slice file: ' + file)
   // console.log('slice pos: ' + pos)
-  var lineNumber = pos.line - 1
+  var errorLineNumber = pos.line - 1
   var column = pos.column
   var contents = fs.readFileSync(file, 'utf8')
   var lines = contents.split('\n')
@@ -143,11 +147,11 @@ function sliceOfFile (file, pos) {
   var line, index, i
   // find last non-empty line
   for (i = 0; i < lines.length; i++) {
-    index = lineNumber - i
+    index = errorLineNumber - i
     line = lines[index]
     if (line.trim()) {
       // non-empty line found
-      lineNumber = index
+      errorLineNumber = index
       break
     }
 
@@ -156,28 +160,73 @@ function sliceOfFile (file, pos) {
     column = -1
   }
 
-  // grab last 5 lines
+  // grab last 8 lines
+  var linesBelow = 3
+  var linesAbove = 5
   var results = []
-  for (i = 0; i < 5; i++) {
-    index = lineNumber + i - 4
-    if (index >= 0) {
+  var errorLineIndex = 0
+  for (i = 0; i <= (linesBelow + linesAbove); i++) {
+    index = errorLineNumber + i - linesAbove
+    if (index === errorLineNumber) errorLineIndex = (results.length + 1)
+    if (index >= 0 && index < lines.length) {
       var l = lines[index]
-      // parse distracting escapes
+      // parse away distracting character escapes
       l = l.split('\'').join('"')
-      results.push(l)
+      // var prefix = ('    ' + (index + 1) + '| ')
+      results.push({
+        line: l,
+        lineNumber: index + 1
+      })
     }
   }
 
-  // lastly push in small arrow indicator
-  var lastLine = results[results.length - 1]
+  // calculate minimum start indentation we can slice off
+  // without affecting relative indentation
+  var minLeftPadding = 999
+  results.forEach(function (item) {
+    var counter = 0
+    for (var i = 0; i < item.line.length; i++) {
+      if (item.line[i].trim().length === 0) continue
+      minLeftPadding = Math.min(minLeftPadding, i)
+      break
+    }
+  })
+
+  // cut off the extra start indentation
+  results = results.map(function (item) {
+    item.line = item.line.slice(minLeftPadding)
+    return item
+  })
+
+  // add line numbers to lines, pad by biggest line number
+  var lineLeftPadding = String(results[results.length - 1].lineNumber).length + 1
+  // console.log('lineLeftPadding: ' + lineLeftPadding)
+  var resultLines = results.map(function (item) {
+    var length = String(item.lineNumber).length
+    var delta = (lineLeftPadding - length)
+    var prefix = ' '
+    while (--delta > 0) prefix += ' '
+    prefix += String(item.lineNumber)
+    prefix += '| '
+    return (prefix + item.line)
+  })
+
+  results = resultLines
+
+  // lastly push in small arrow indicator after the error line
+  // var lastLine = results[results.length - 1]
   var indicator = []
-  for (i = 0; i < column; i++) indicator.push('_')
+  for (i = 0; i < (column + lineLeftPadding + 2 - minLeftPadding); i++) indicator.push('-')
   if (column < 0) {
     indicator.push('^')
   } else {
-    indicator[column] = '^'
+    indicator[(column + lineLeftPadding + 2 - minLeftPadding)] = '^'
   }
-  results.push(indicator.join(''))
+
+  var arrowLine = indicator.join('')
+  results = results.slice(0, errorLineIndex)
+                    .concat([arrowLine])
+                    .concat(results.slice(errorLineIndex))
   results.push('')
 
   return results
@@ -185,17 +234,29 @@ function sliceOfFile (file, pos) {
 
 var buildTimeout = null
 var _timeout = null
-function triggerRebuild () {
-  clearTimeout(_timeout)
-  // _timeout = setTimeout(function () {
-  //   verbose && console.log(chalk.gray('triggering...'))
-  // }, 20)
-  clearTimeout(buildTimeout)
-  buildTimeout = setTimeout(function () {
-    build()
-  }, 33)
+function triggerRebuild (path) {
+  if (options && path.indexOf(options.dest) !== -1) {
+    verbose && console.log(chalk.yellow('ignoring trigger from destination bundle'))
+    return undefined
+  }
+
+  var target = path
+  verbose && console.log(chalk.yellow('trigger from target [' + chalk.magenta(target) + ']'))
+  fs.stat(target, function (err, stats) {
+    if (err) throw err
+
+    if (mtimes[target] === undefined || stats.mtime > mtimes[target]) {
+      mtimes[target] = stats.mtime
+      clearTimeout(buildTimeout)
+      buildTimeout = setTimeout(function () {
+        build()
+      }, 33)
+    } else {
+      // ignore, nothing modified
+      verbose && console.log('-- nothing modified --')
+    }
+  })
 }
-var trigger = triggerRebuild
 
 function honeydripError (err) {
   // console.log('honeydripping')
@@ -254,7 +315,7 @@ function build () {
       if (lazyCachedBundle) {
         console.log(chalk.yellow('using lazyCachedBundle'))
       } else {
-        console.log(chalk.yellow('no lazyCachedBundle, generating cache...'))
+        // console.log(chalk.yellow('no lazyCachedBundle, generating cache...'))
       }
     }
 
@@ -265,6 +326,7 @@ function build () {
     //
     // for more info see the issue on github: https://github.com/rollup/rollup/issues/1010
     if (!nolazy) {
+      verbose && console.log(chalk.yellow('no lazyCachedBundle, generating cache...'))
       opts.cache = lazyCachedBundle || JSON.parse(JSON.stringify(cache))
       // try and do the workaround cache after the build is complete
       // so that the build times aren't noticably affected
@@ -297,12 +359,12 @@ function build () {
   }
 
   rollup.rollup(opts).then(function (bundle) {
-    // console.log('bla')
     cache = bundle
 
     // close globalWatcher if it was on
     if (globalWatcher !== undefined) {
       verbose && console.log(cc('removing global watcher', c['yellow']))
+      globalWatcher.unwatch('*')
       globalWatcher.close()
       globalWatcher = undefined
     }
@@ -332,30 +394,12 @@ function build () {
 
         // ignore node_modules
         if (filePath.toLowerCase().indexOf('node_modules') === -1) {
-          var watcher = chokidar.watch(id)
-          watcher.on('change', function (path) {
-            var now = Date.now()
-            var t = watcher.__mtime
-
-            fs.stat(id, function (err, stats) {
-              var mtime = stats.mtime
-
-              if (err) return console.log(err)
-
-              if (t === undefined || mtime > t) {
-                verbose && console.log(cc('trigger from: ' + id, c['yellow']))
-                trigger()
-                watcher.__mtime = mtime
-              } else {
-                verbose && console.log('ignoring trigger, nothing modified from: ' + id)
-              }
-            })
-          }, {
+          var watcher = chokidar.watch(id, {
             // use polling on linux and windows
             usePolling: os.platform() !== 'darwin'
           })
+          watcher.on('change', triggerRebuild)
           watchers[id] = watcher
-
           console.log('  \u001b[90mwatching\u001b[0m %s', filePath);
         } else {
           // dont watch node_modules
