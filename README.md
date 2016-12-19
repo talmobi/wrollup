@@ -24,6 +24,7 @@ Using a similar init process we use rollup internally to parse the rollup.config
 # Arguments
 ```bash
 -c, --config - specify path to rollup.config.js (defaults to rollup.config.js)
+--files      - specify glob of files to watch (defaults to '**/*.js*')
 --nocache    - disables bundle caching
 --verbose    - wrollup will console.log some extra info of what it is doing
 ```
