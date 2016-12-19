@@ -55,6 +55,8 @@ var colors = ['green', 'yellow', 'blue', 'cyan', 'magenta', 'white']
 
 var configPath = path.resolve(argv['c'] || argv['config'] || 'rollup.config.js')
 
+var allProjectFilesGlob = argv['files'] || '**/*.js*'
+
 // return console.log('configPath: ' + configPath)
 
 process.chdir(path.dirname(configPath))
@@ -76,11 +78,11 @@ function setupGlobalWatcher () {
       ignoreInitial: true
     }
 
-    globalWatcher = chokidar.watch('**/*.js*', opts)
+    globalWatcher = chokidar.watch(allProjectFilesGlob, opts)
     globalWatcher.on('add', triggerRebuild)
     globalWatcher.on('change', triggerRebuild)
 
-    verbose && console.log(cc('starting build error watcher [**/*.js*]', c['yellow']))
+    verbose && console.log(cc('starting build error watcher ' + allProjectFilesGlob, c['yellow']))
 
     var keys = Object.keys(watchers)
     for (let i = 0; i < keys.length; i++) {
@@ -94,7 +96,7 @@ function setupGlobalWatcher () {
       }
     }
   } else {
-    verbose && console.log(cc('build error watcher still ready [**/*.js*]', c['yellow']))
+    verbose && console.log(cc('build error watcher still ready [' + allProjectFilesGlob + ']', c['yellow']))
   }
 }
 
