@@ -96,7 +96,7 @@ function setupGlobalWatcher () {
       }
     }
   } else {
-    verbose && console.log(cc('build error watcher still ready [**/*.js*]', c['yellow']))
+    verbose && console.log(cc('build error watcher still ready [' + allProjectFilesGlob + ']', c['yellow']))
   }
 }
 
