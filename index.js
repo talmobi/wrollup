@@ -11,8 +11,54 @@ var realpathSync = fs.realpathSync
 
 var argv = require('minimist')(process.argv.slice(2))
 
-var verbose = !!argv.verbose // for debugging
-var nolazy = !!argv['nolazy']
+var usage = [
+    ''
+  , '  Usage: wrollup [options]'
+  , ''
+  , '  Requirements: rollup'
+  , ''
+  , '    npm install -g rollup         Install globally (not recommended)'
+  , '    npm install --save-dev rollup  Install locally (recommended)'
+  , ''
+  , '  Examples:'
+  , ''
+  , '    wrollup -c rollup.config.js'
+  , '    wrollup --verbose --error-glob "scripts/**/*.(ts|tsx|js)"'
+  , '    wrollup --help'
+  , ''
+  , '  Options:'
+  , ''
+  , '    -c, --config                   Specify path to rollup.config.js'
+  , '    --error-glob, --files          Specify glob of files to watch on rollup error/crash'
+  , '                                   for auto-recovery (defaults to \'**/*.js*\')'
+  , '    --verbose                      Wrollup will console.log some extra info of'
+  , '                                   what is going on'
+  , '    --disable-cache, --nocache     Disable bundle caching'
+  , '    --cache-before-disk            Generate cache before bundle written to disk'
+  , '    -v, --version                  Display wrollup and rollup versions'
+  , '    -h, --help                     Display help information'
+  , ''
+].join('\n');
+
+if (!!argv['help'] || !!argv['h']) {
+  console.error(usage)
+  return undefined // exit success
+}
+
+if (!!argv['version'] || !!argv['v']) {
+  var packageJson = require('./package.json')
+  var versions = [
+      ''
+    , 'wrollup version: ' + (packageJson['VERSION'] || packageJson['version'])
+    , 'rollup version: ' + (rollup['VERSION'] || rollup['version'])
+    , ''
+  ].join('\n')
+  console.error(versions)
+  return undefined // exit success
+}
+
+var verbose = !!argv['verbose'] // for debugging
+var nolazy = !!(argv['nolazy'] || argv['cache-before-disk'])
 
 // var relative = require('require-relative')
 // var nodeResolve = require('rollup-plugin-node-resolve')
@@ -45,7 +91,7 @@ var path = require('path')
 
 // var _eval = require('eval')
 
-var ENABLE_CACHE = !argv['nocache']
+var ENABLE_CACHE = !(!!argv['nocache'] || !!argv['disable-cache'])
 var cache = undefined
 var lazyCachedBundle = undefined // workarond for: https://github.com/rollup/rollup/issues/1010
 var watchers = {}
@@ -55,7 +101,7 @@ var colors = ['green', 'yellow', 'blue', 'cyan', 'magenta', 'white']
 
 var configPath = path.resolve(argv['c'] || argv['config'] || 'rollup.config.js')
 
-var allProjectFilesGlob = argv['files'] || '**/*.js*'
+var allProjectFilesGlob = argv['files'] || argv['error-glob'] || '**/*.js*'
 
 // return console.log('configPath: ' + configPath)
 
