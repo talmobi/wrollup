@@ -17,7 +17,7 @@ var usage = [
   , ''
   , '  Requirements: rollup'
   , ''
-  , '    npm install -g rollup         Install globally (not recommended)'
+  , '    npm install -g rollup          Install globally (not recommended)'
   , '    npm install --save-dev rollup  Install locally (recommended)'
   , ''
   , '  Examples:'
