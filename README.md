@@ -1,6 +1,6 @@
 # wrollup - Simple watcher for rollup
 
-![](https://thumbs.gfycat.com/FirstCreamyBasenji-size_restricted.gif)
+![](https://fat.gfycat.com/FelineAffectionateCockerspaniel.gif)
 
 [![npm](https://img.shields.io/npm/v/wrollup.svg?maxAge=2592000)](https://www.npmjs.com/package/wrollup)
 [![npm](https://img.shields.io/npm/dm/wrollup.svg?maxAge=2592000)](https://www.npmjs.com/package/wrollup)
