@@ -25,24 +25,24 @@ Using a similar init process we use rollup internally to parse the rollup.config
 ```bash
 $ wrollup --help
 
-  Usage: wrollup [options]'
+  Usage: wrollup [options]
   
-  Examples:'
+  Examples:
   
-    wrollup -c rollup.config.js'
-    wrollup --verbose --error-glob "scripts/**/*.(ts|tsx|js)"'
-    wrollup --help'
+    wrollup -c rollup.config.js
+    wrollup --verbose --error-glob "scripts/**/*.(ts|tsx|js)"
+    wrollup --help
   
-  Options:'
+  Options:
   
-    -c, --config                   Specify path to rollup.config.js'
-    --error-glob, --files          Specify glob of files to watch on rollup error/crash'
-                                   for auto-recovery (defaults to \'**/*.js*\')'
-    --verbose                      Wrollup will console.log some extra info of'
-                                   what is going on'
-    --disable-cache, --nocache     Disable bundle caching'
-    --cache-before-disk            Generate cache before bundle written to disk'
-    -h, --help                     Display help information'
+    -c, --config                   Specify path to rollup.config.js
+    --error-glob, --files          Specify glob of files to watch on rollup error/crash
+                                   for auto-recovery (defaults to \'**/*.js*\')
+    --verbose                      Wrollup will console.log some extra info of
+                                   what is going on
+    --disable-cache, --nocache     Disable bundle caching
+    --cache-before-disk            Generate cache before bundle written to disk
+    -h, --help                     Display help information
 ```
 
 # Installation
