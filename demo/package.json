@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "start": "../cli.js -c rollup.config.js"
+  },
   "devDependencies": {
     "rollup-plugin-buble": "^0.13.0",
     "rollup-plugin-commonjs": "^3.3.1",
