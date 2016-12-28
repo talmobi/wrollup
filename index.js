@@ -1,5 +1,35 @@
 'use strict'
 
+try {
+  var rollupFound = require.resolve('rollup')
+} catch (err) {
+  var rollupRequiredErrorMessage = [
+      ''
+    , '  `rollup` was not found (error)'
+    , ''
+    , '  `wrollup` needs `rollup` to work, you should be building with rollup directly'
+    , '   and use wrollup for development'
+    , ''
+    , ''
+    , '   npm scripts example:'
+    , ''
+    , '    "scripts": {'
+    , '      "build-js": "rollup -c rollup.config.js"'
+    , '      "watch-js": "wrollup -c rollup.config.js"'
+    , '    }'
+    , ''
+    , ''
+    , '   Please install rollup alongside wrollup:'
+    , ''
+    , '     npm install --save-dev rollup wrollup     # locally for use with npm scripts'
+    , '     npm install -g rollup wrollup             # globally (not recommended)'
+    , ''
+  ].join('\n');
+
+  console.error(rollupRequiredErrorMessage)
+  process.exit(err.code)
+}
+
 var rollup = require('rollup')
 var chokidar = require('chokidar')
 var chalk = require('chalk')
