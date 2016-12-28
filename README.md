@@ -9,7 +9,7 @@
 ## Simple to use
 ```bash
 npm install -g wrollup
-wrollup -c path/to/rollup.config.js # looks for ./rollup.config.js by default
+wrollup -c rollup.config.js
 ```
 
 # About
