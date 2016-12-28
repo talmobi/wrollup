@@ -24,7 +24,7 @@ try {
     , '     npm install --save-dev rollup wrollup     # locally for use with npm scripts'
     , '     npm install -g rollup wrollup             # globally (not recommended)'
     , ''
-  ].join('\n');
+  ].join('\n')
 
   console.error(rollupRequiredErrorMessage)
   process.exit(err.code)
@@ -68,7 +68,7 @@ var usage = [
   , '    -v, --version                  Display wrollup and rollup versions'
   , '    -h, --help                     Display help information'
   , ''
-].join('\n');
+].join('\n')
 
 if (!!argv['help'] || !!argv['h']) {
   console.error(usage)
