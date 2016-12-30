@@ -465,6 +465,14 @@ function build () {
         continue
       }
 
+      // resolve symlinks to avoid duplicate watchers
+      // https://github.com/rollup/rollup-watch/commit/b5aac3ae997955a1aa30aeeb3fe708f468b7e368
+      try {
+        id = fs.realpathSync( id )
+      } catch ( err ) {
+        return undefined
+      }
+
       // re-bind watchers on other platforms
       if (watchers[id] && os.platform() !== 'darwin') {
         var watcher = watchers[id]
