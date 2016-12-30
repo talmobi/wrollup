@@ -135,7 +135,14 @@ var allProjectFilesGlob = argv['files'] || argv['error-glob'] || '**/*.js*'
 
 // return console.log('configPath: ' + configPath)
 
-process.chdir(path.dirname(configPath))
+// process.chdir(path.dirname(configPath))
+
+try {
+  var config = fs.readFileSync(configPath)
+} catch (err) {
+  console.error('no rollup.config.js found at [$1]'.replace('$1', configPath))
+  throw err
+}
 
 const stderr = console.error.bind( console )
 var mtimes = {}
