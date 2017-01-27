@@ -2,9 +2,9 @@
 
 ![](https://fat.gfycat.com/FelineAffectionateCockerspaniel.gif)
 
-[![npm](https://img.shields.io/npm/v/wrollup.svg?maxAge=86400)](https://www.npmjs.com/package/wrollup)
-[![npm](https://img.shields.io/npm/dm/wrollup.svg?maxAge=86400)](https://www.npmjs.com/package/wrollup)
-[![npm](https://img.shields.io/npm/l/wrollup.svg?maxAge=86400)](https://www.npmjs.com/package/wrollup)
+[![npm](https://img.shields.io/npm/v/wrollup.svg?maxAge=3600)](https://www.npmjs.com/package/wrollup)
+[![npm](https://img.shields.io/npm/dm/wrollup.svg?maxAge=3600)](https://www.npmjs.com/package/wrollup)
+[![npm](https://img.shields.io/npm/l/wrollup.svg?maxAge=3600)](https://www.npmjs.com/package/wrollup)
 
 ## Simple to use
 ```bash
