@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "start": "../cli.js -c rollup.config.js"
+    "start": "../cli.js -c rollup.config.js",
+    "startcli": "../cli.js --input src/index.js --output dist/bundle.js -f iife -c node:buble -c node:nodeResolve node:commonjs"
   },
   "devDependencies": {
     "rollup-plugin-buble": "^0.13.0",

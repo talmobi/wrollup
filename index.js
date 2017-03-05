@@ -1,5 +1,7 @@
 'use strict'
 
+var INTERVAL = 133
+
 try {
   var rollupFound = require.resolve('rollup')
 } catch (err) {
@@ -34,12 +36,38 @@ var rollup = require('rollup')
 var chokidar = require('chokidar')
 var chalk = require('chalk')
 var fs = require('fs')
+var minimist = require('minimist')
 
 var os = require('os')
 
 var realpathSync = fs.realpathSync
 
-var argv = require('minimist')(process.argv.slice(2))
+var options = {}
+
+var command = minimist( process.argv.slice( 2 ), {
+  alias: {
+    // Aliases
+    strict: 'useStrict',
+
+    // Short options
+    c: 'config',
+    d: 'indent',
+    e: 'external',
+    f: 'format',
+    g: 'globals',
+    h: 'help',
+    i: 'input',
+    l: 'legacy',
+    m: 'sourcemap',
+    n: 'name',
+    o: 'output',
+    u: 'id',
+    v: 'version',
+    w: 'watch'
+  }
+})
+
+var argv = command // alias
 
 var usage = [
     ''
@@ -70,12 +98,12 @@ var usage = [
   , ''
 ].join('\n')
 
-if (!!argv['help'] || !!argv['h']) {
+if ( command.help || ( process.argv.length <= 2 && process.stdin.isTTY ) ) {
   console.error(usage)
-  return undefined // exit success
+  process.exit() // exit success
 }
 
-if (!!argv['version'] || !!argv['v']) {
+if ( command.version ) {
   var packageJson = require('./package.json')
   var versions = [
       ''
@@ -84,11 +112,11 @@ if (!!argv['version'] || !!argv['v']) {
     , ''
   ].join('\n')
   console.error(versions)
-  return undefined // exit success
+  process.exit() // exit success
 }
 
-var verbose = !!argv['verbose'] // for debugging
-var nolazy = !!(argv['nolazy'] || argv['cache-before-disk'])
+var verbose = !!command.verbose // for debugging
+var nolazy = !!(command['nolazy'] || command['cache-before-disk'])
 
 // var relative = require('require-relative')
 // var nodeResolve = require('rollup-plugin-node-resolve')
@@ -129,20 +157,110 @@ var watchers = {}
 // chalk colours
 var colors = ['green', 'yellow', 'blue', 'cyan', 'magenta', 'white']
 
-var configPath = path.resolve(argv['c'] || argv['config'] || 'rollup.config.js')
-
 var allProjectFilesGlob = argv['files'] || argv['error-glob'] || '**/*.js*'
+
+var configPath = undefined
 
 // return console.log('configPath: ' + configPath)
 
 // process.chdir(path.dirname(configPath))
 
-try {
-  var config = fs.readFileSync(configPath)
-} catch (err) {
-  console.error('no rollup.config.js found at [$1]'.replace('$1', configPath))
-  throw err
+// TODO build rollup options object based on the command line arguments
+// ref: https://github.com/rollup/rollup/blob/master/bin/src/runRollup.js
+function parseRollupArgs () {
+  if ( command._.length > 1) {
+    console.error('wrollup can only bundle one file at a time')
+    process.exit(1)
+  }
+
+  if ( command._.length === 1 ) {
+    if ( command.input ) {
+      console.error('use --input, or pass input as path as argument')
+      process.exit(1)
+    }
+
+    command.input = command._[0]
+  }
+
+  if ( command.environment ) {
+    command.environment.split( ',' ).forEach( function ( pair ) {
+      const index = pair.indexOf( ':' )
+      if ( ~index ) {
+        process.env[ pair.slice( 0, index ) ] = pair.slice( index + 1 )
+      } else {
+        process.env[ pair ] = true
+      }
+    })
+  }
+
+  var config = command.config === true ? 'rollup.config.js' : command.config
+  configPath = config
+  if ( config && config.slice( 0, 5 ) !== 'node:' ) {
+    try {
+      fs.readFileSync(configPath)
+
+      // parse the rollup.config.js file with rollup
+      rollup.rollup({
+        entry: configPath,
+        onwarn: function (message) {
+          if ( /Treating .+ as external dependency/.test( message ) ) return
+          printError( message )
+          //setupGlobalWatcher()
+        }
+        // plugins: [ nodeResolve(), commonjs() ]
+      }).then(function (bundle) {
+        var result = bundle.generate({ format: 'cjs' })
+        var opts = requireFromString(result.code)
+        // console.log(opts)
+        init(opts)
+      }).then(function () {
+        verbose && console.log(chalk.yellow('initliaized'))
+      }, function (err) {
+        throw err
+      })
+
+    } catch (err) {
+      console.error('no rollup.config.js found at [$1]'.replace('$1', configPath))
+      throw err
+    }
+  } else {
+    var equivalents = {
+      useStrict: 'useStrict',
+      banner: 'banner',
+      footer: 'footer',
+      format: 'format',
+      globals: 'globals',
+      id: 'moduleId',
+      indent: 'indent',
+      input: 'entry',
+      intro: 'intro',
+      legacy: 'legacy',
+      name: 'moduleName',
+      output: 'dest',
+      outro: 'outro',
+      sourcemap: 'sourceMap',
+      treeshake: 'treeshake'
+    }
+
+    var opts = {}
+    Object.keys( equivalents ).forEach(function ( cliOption ) {
+      if ( command.hasOwnProperty( cliOption ) ) {
+        opts[ equivalents[ cliOption ] ] = command[ cliOption ]
+      }
+    })
+
+    init(opts)
+  }
 }
+
+parseRollupArgs()
+
+// try {
+//   var config = fs.readFileSync(configPath)
+// } catch (err) {
+//   console.error('no rollup.config.js found at [$1]'.replace('$1', configPath))
+//   throw err
+// }
 
 const stderr = console.error.bind( console )
 var mtimes = {}
@@ -156,7 +274,8 @@ function setupGlobalWatcher () {
   if (globalWatcher === undefined) {
 
     var opts = {
-      usePolling: os.platform() !== 'darwin',
+      usePolling: true || os.platform() !== 'darwin',
+      interval: INTERVAL,
       ignored: /node_modules|[\/\\]\./,
       ignoreInitial: true
     }
@@ -183,31 +302,10 @@ function setupGlobalWatcher () {
   }
 }
 
-rollup.rollup({
-  entry: configPath,
-  onwarn: function (message) {
-    if ( /Treating .+ as external dependency/.test( message ) ) return
-    printError( message )
-    //setupGlobalWatcher()
-  }
-  // plugins: [ nodeResolve(), commonjs() ]
-}).then(function (bundle) {
-  var result = bundle.generate({ format: 'cjs' })
-  var opts = requireFromString(result.code)
-  // console.log(opts)
-  init(opts)
-}).then(function () {
-  verbose && console.log(chalk.yellow('initliaized'))
-}, function (err) {
-  throw err
-})
-
-var options = undefined
-
 function init (opts) {
   options = Object.assign({}, opts)
   // console.log(options)
-  build()
+  build(true)
 }
 
 function log (text) {
@@ -326,6 +424,9 @@ function triggerRebuild (path) {
   }
 
   var target = path
+
+  console.log(chalk.yellow('trigger from target [' + chalk.magenta(target) + ']')) // TODO
+
   verbose && console.log(chalk.yellow('trigger from target [' + chalk.magenta(target) + ']'))
   fs.stat(target, function (err, stats) {
     if (err) throw err
@@ -388,7 +489,7 @@ function generateLazyCache () {
   }, 0)
 }
 
-function build () {
+function build (precache) {
   // clearConsole()
   verbose && console.log(chalk.gray('bundling... [' + chalk.blue((new Date().toLocaleString())) + ']'))
 
@@ -489,7 +590,10 @@ function build () {
         if (filePath.toLowerCase().indexOf('node_modules') === -1) {
           var watcher = chokidar.watch(id, {
             // use polling on linux and windows
-            usePolling: os.platform() !== 'darwin'
+            usePolling: true || os.platform() !== 'darwin',
+            interval: INTERVAL,
+            ignored: /node_modules|[\/\\]\./,
+            ignoreInitial: false
           })
           watcher.on('change', triggerRebuild)
           watchers[id] = watcher
@@ -500,7 +604,16 @@ function build () {
       }
     }
 
-    return bundle.write(opts)
+    if (precache) {
+      setTimeout(function () {
+        // console.log(' -- first -- ')
+        build()
+        // console.log(' --  ---  -- ')
+      }, 1)
+      return { then: function () { /* console.log(' -- precache -- ') */ } }
+    } else {
+      return bundle.write(opts)
+    }
   }).then(function () {
     generateLazyCache()
 
