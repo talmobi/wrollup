@@ -575,7 +575,8 @@ function build (precache) {
       }
 
       // re-bind watchers on other platforms
-      if (watchers[id] && os.platform() !== 'darwin') {
+      // if (watchers[id] && os.platform() !== 'darwin') {
+      if (watchers[id]) {
         var watcher = watchers[id]
         watcher.close()
         watchers[id] = undefined
@@ -590,7 +591,8 @@ function build (precache) {
         if (filePath.toLowerCase().indexOf('node_modules') === -1) {
           var watcher = chokidar.watch(id, {
             // use polling on linux and windows
-            usePolling: true || os.platform() !== 'darwin',
+            // usePolling: true || os.platform() !== 'darwin',
+            usePolling: true,
             interval: INTERVAL,
             ignored: /node_modules|[\/\\]\./,
             ignoreInitial: false
