@@ -40,6 +40,8 @@ var minimist = require('minimist')
 
 var os = require('os')
 
+var pw = require('../poll-watch/index.js')
+
 var realpathSync = fs.realpathSync
 
 var options = {}
@@ -577,9 +579,9 @@ function build (precache) {
       // re-bind watchers on other platforms
       // if (watchers[id] && os.platform() !== 'darwin') {
       if (watchers[id]) {
-        var watcher = watchers[id]
-        watcher.close()
-        watchers[id] = undefined
+        // var watcher = watchers[id]
+        // watcher.close()
+        // watchers[id] = undefined
       }
 
       if (watchers[id] === undefined) {
@@ -589,15 +591,21 @@ function build (precache) {
 
         // ignore node_modules
         if (filePath.toLowerCase().indexOf('node_modules') === -1) {
-          var watcher = chokidar.watch(id, {
-            // use polling on linux and windows
-            // usePolling: true || os.platform() !== 'darwin',
-            usePolling: true,
-            interval: INTERVAL,
-            ignored: /node_modules|[\/\\]\./,
-            ignoreInitial: false
+          // var watcher = chokidar.watch(id, {
+          //   // use polling on linux and windows
+          //   // usePolling: true || os.platform() !== 'darwin',
+          //   usePolling: true,
+          //   interval: INTERVAL,
+          //   ignored: /node_modules|[\/\\]\./,
+          //   ignoreInitial: false
+          // })
+          // watcher.on('change', triggerRebuild)
+          // watchers[id] = watcher
+          // console.log('  \u001b[90mwatching\u001b[0m %s', filePath);
+          var watcher = pw.watch(id)
+          watcher.on(function () {
+            triggerRebuild(id)
           })
-          watcher.on('change', triggerRebuild)
           watchers[id] = watcher
           console.log('  \u001b[90mwatching\u001b[0m %s', filePath);
         } else {
