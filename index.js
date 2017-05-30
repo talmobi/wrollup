@@ -33,14 +33,15 @@ try {
 }
 
 var rollup = require('rollup')
-var chokidar = require('chokidar')
+// var chokidar = require('chokidar')
 var chalk = require('chalk')
 var fs = require('fs')
 var minimist = require('minimist')
 
 var os = require('os')
 
-var pw = require('../poll-watch/index.js')
+// var pw = require('../poll-watch/index.js')
+var pw = require('poll-watch')
 
 var realpathSync = fs.realpathSync
 
@@ -270,35 +271,30 @@ var mtimes = {}
 // used to listen for change on all source files when an error occurs
 // in order to re-initliaize source watching/bundling
 var globalWatcher = undefined
+var buildWatcher = pw.create()
 
 var _globalWatcherTimeout = null
 function setupGlobalWatcher () {
   if (globalWatcher === undefined) {
-
-    var opts = {
-      usePolling: true || os.platform() !== 'darwin',
-      interval: INTERVAL,
-      ignored: /node_modules|[\/\\]\./,
-      ignoreInitial: true
-    }
-
-    globalWatcher = chokidar.watch(allProjectFilesGlob, opts)
-    globalWatcher.on('add', triggerRebuild)
-    globalWatcher.on('change', triggerRebuild)
+    buildWatcher.close() // stop watching build resources
 
     verbose && console.log(cc('starting build error watcher ' + allProjectFilesGlob, c['yellow']))
 
-    var keys = Object.keys(watchers)
-    for (let i = 0; i < keys.length; i++) {
-      let key = keys[i]
-      let w = watchers[key]
-      try {
-        w.close()
-        watchers[key] = undefined
-      } catch (e) {
-        verbose && console.log('failed to close watcher')
-      }
-    }
+    var glob = require('glob')
+    glob(allProjectFilesGlob, function (err, files) {
+      if (err) throw err
+
+      globalWatcher = pw.create()
+      // pw.clear()
+      files.forEach(function (file) {
+        // console.log('watching file: ' + file)
+        var w = globalWatcher.watch(file)
+        w.on(function (data) {
+          // console.log('modification from: ' + file)
+          triggerRebuild(file)
+        })
+      })
+    })
   } else {
     verbose && console.log(cc('build error watcher still ready [' + allProjectFilesGlob + ']', c['yellow']))
   }
@@ -427,7 +423,8 @@ function triggerRebuild (path) {
 
   var target = path
 
-  console.log(chalk.yellow('trigger from target [' + chalk.magenta(target) + ']')) // TODO
+  // console.log(chalk.yellow('trigger from target [' + chalk.magenta(target) + ']')) // TODO
+  console.log(cc('modification from', c['cyan']) + ' %s', path);
 
   verbose && console.log(chalk.yellow('trigger from target [' + chalk.magenta(target) + ']'))
   fs.stat(target, function (err, stats) {
@@ -551,10 +548,11 @@ function build (precache) {
 
     // close globalWatcher if it was on
     if (globalWatcher !== undefined) {
-      verbose && console.log(cc('removing global watcher', c['yellow']))
-      globalWatcher.unwatch('*')
+      verbose && console.log(cc('removing global error watcher (successful build)', c['yellow']))
       globalWatcher.close()
       globalWatcher = undefined
+      watchers = {}
+      buildWatcher.clear()
     }
 
     for (let i = 0; i < bundle.modules.length; i++) {
@@ -576,14 +574,6 @@ function build (precache) {
         return undefined
       }
 
-      // re-bind watchers on other platforms
-      // if (watchers[id] && os.platform() !== 'darwin') {
-      if (watchers[id]) {
-        // var watcher = watchers[id]
-        // watcher.close()
-        // watchers[id] = undefined
-      }
-
       if (watchers[id] === undefined) {
         var cwd = process.cwd()
         var base = cwd.substring( cwd.lastIndexOf('/') )
@@ -591,22 +581,11 @@ function build (precache) {
 
         // ignore node_modules
         if (filePath.toLowerCase().indexOf('node_modules') === -1) {
-          // var watcher = chokidar.watch(id, {
-          //   // use polling on linux and windows
-          //   // usePolling: true || os.platform() !== 'darwin',
-          //   usePolling: true,
-          //   interval: INTERVAL,
-          //   ignored: /node_modules|[\/\\]\./,
-          //   ignoreInitial: false
-          // })
-          // watcher.on('change', triggerRebuild)
-          // watchers[id] = watcher
-          // console.log('  \u001b[90mwatching\u001b[0m %s', filePath);
-          var watcher = pw.watch(id)
-          watcher.on(function () {
+          var w = buildWatcher.watch(id)
+          w.on(function () {
             triggerRebuild(id)
           })
-          watchers[id] = watcher
+          watchers[id] = w
           console.log('  \u001b[90mwatching\u001b[0m %s', filePath);
         } else {
           // dont watch node_modules
@@ -668,7 +647,11 @@ function build (precache) {
       // error.push('\n')
 
       // error.push(chalk.gray('``` \033[31m' + honey[0] + '\033[0m'))
-      error.push(cc('``` ', c['gray']) + cc(honey[0], c['red']))
+      var errLocationString = ''
+      if (honey && honey[1] && honey[1].line && honey[1].column) {
+        errLocationString = ' (' + cc(honey[1].line, c['red']) + ':' + cc(honey[1].column, c['red']) + ')'
+      }
+      error.push(cc('``` ', c['gray']) + cc(honey[0], c['red']) + errLocationString)
 
       honey[3].forEach(function (line) { error.push(line) })
       // console.log('```')
