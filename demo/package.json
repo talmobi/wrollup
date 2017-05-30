@@ -1,6 +1,7 @@
 {
   "scripts": {
     "start": "../cli.js -c rollup.config.js",
+    "startwooster": "../cli.js -c rollup.config.js 2>&1 | /Users/mollie/code/wooster/cli.js",
     "startcli": "../cli.js --input src/index.js --output dist/bundle.js -f iife -c node:buble -c node:nodeResolve node:commonjs"
   },
   "devDependencies": {
