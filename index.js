@@ -1,7 +1,5 @@
 'use strict'
 
-var INTERVAL = 133
-
 try {
   var rollupFound = require.resolve('rollup')
 } catch (err) {
@@ -149,6 +147,7 @@ var c = {
 }
 
 var path = require('path')
+var __path = path
 
 // var _eval = require('eval')
 
@@ -424,7 +423,9 @@ function triggerRebuild (path) {
   var target = path
 
   // console.log(chalk.yellow('trigger from target [' + chalk.magenta(target) + ']')) // TODO
-  console.log(cc('modification from', c['cyan']) + ' %s', path);
+  var relativePath = './' + __path.relative(process.cwd(), __path.resolve(path))
+  console.log(cc('modification from', c['cyan']) + ' %s', relativePath);
+  // console.log(cc('modification from', c['cyan']) + ' %s', path);
 
   verbose && console.log(chalk.yellow('trigger from target [' + chalk.magenta(target) + ']'))
   fs.stat(target, function (err, stats) {
