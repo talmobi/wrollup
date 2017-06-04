@@ -1,0 +1,17 @@
+{
+  "scripts": {
+    "start": "../cli.js -c rollup.config.js",
+    "startwooster": "../cli.js -c rollup.config.js 2>&1 | /Users/mollie/code/wooster/cli.js",
+    "startcli": "../cli.js --input src/index.js --output dist/bundle.js -f iife -c node:buble -c node:nodeResolve node:commonjs"
+  },
+  "devDependencies": {
+    "rollup": "^0.41.6",
+    "rollup-plugin-buble": "^0.13.0",
+    "rollup-plugin-commonjs": "^3.3.1",
+    "rollup-plugin-node-resolve": "^2.1.1",
+    "wrollup": "^0.3.1"
+  },
+  "dependencies": {
+    "react": "^15.5.4"
+  }
+}
